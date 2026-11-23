@@ -20,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "analyze": "next analyze"
+    "analyze": "next analyze",
+    "prepare": "node .husky/install.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.6",
@@ -39,6 +40,8 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@eslint/compat": "^2.1.1",
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^16.4.6",
@@ -66,6 +69,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-testing-library": "^7.16.2",
     "globals": "^17.14.0",
+    "husky": "^9.1.7",
     "jiti": "^2.7.0",
     "jsdom": "^31.0.0",
     "prettier": "^3.10.1",
