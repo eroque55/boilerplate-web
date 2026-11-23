@@ -30,7 +30,7 @@ src/
   store/              Zustand stores
   test/               Test helpers. Never imported by app code.
   theme/              colors.ts (source of truth) + global.css
-  types/              Domain and API types (TUser, TApiError)
+  types/              Domain and API types (TUser, TAuthSession, TProblemDetails)
   utils/              Pure helpers + cookie/session utilities. No React.
   validation/         Zod config (zod.ts) + form schemas (*.validation.ts)
   env.ts              Fail-fast environment variable validation
@@ -126,6 +126,25 @@ already have been hoisted.
 | A form schema                              | `validation/name.validation.ts`                               |
 | A domain type                              | `types/`                                                      |
 | An SVG icon                                | `assets/icons/Name.svg` + export in `assets/icons/index.ts`   |
+
+## The API contract
+
+The backend is [boilerplate-api](https://github.com/eroque55/boilerplate-api).
+`NEXT_PUBLIC_API_URL` includes the version (`http://localhost:3333/v1`), so
+services use paths relative to it (`auth/login`, `users/me`).
+
+| Call                   | Service                   | Returns        |
+| ---------------------- | ------------------------- | -------------- |
+| `POST auth/register`   | `authService.register`    | `TAuthSession` |
+| `POST auth/login`      | `authService.login`       | `TAuthSession` |
+| `POST auth/refresh`    | `services/http.ts` (only) | `TTokenPair`   |
+| `POST auth/logout`     | `authService.logout`      | `204`          |
+| `POST auth/logout-all` | `authService.logoutAll`   | `204`          |
+| `GET users/me`         | `usersService.fetchMe`    | `TUser`        |
+
+Lists come as `TPaginated<T>` (`{ data, meta: { page, pageSize, pageCount, total } }`),
+single objects with no envelope, errors as `TProblemDetails`. When the API
+changes a schema, update `types/` to match its OpenAPI document at `/docs`.
 
 ## Query keys
 

@@ -50,6 +50,19 @@ anti-pattern).
   server snapshot (`false`). Keep that pattern whenever bridging browser-only
   APIs to React 19.
 
+## Session cookies and "Manter-me conectado"
+
+`session.start` always stores **both** tokens. The checkbox only decides their
+lifetime: persistent cookies (30 days, matching the API's
+`REFRESH_TOKEN_TTL_DAYS`) or browser-session cookies. Dropping the refresh token
+of a non-persistent login would log the user out when the 15-minute access
+token expires.
+
+Each refresh returns a new pair (the API rotates refresh tokens), so
+`session.rotate` rewrites both cookies keeping the original choice, read from
+the `persistSession` cookie. Never call `session.start(data, true)` on refresh:
+it would silently turn a browser-session login into a 30-day one.
+
 ## Token refresh is deduplicated
 
 `src/services/http.ts` shares a single module-level `refreshPromise` across
@@ -60,6 +73,11 @@ would otherwise log the user out.
 
 When refresh fails (or no refresh token exists), `session.end()` clears cookies
 and redirects to `/login`.
+
+`PUBLIC_URLS` in `http.ts` lists the auth routes that must never carry the
+`Authorization` header nor trigger a refresh on `401`. A `401` from
+`/auth/login` means wrong credentials, and one from `/auth/refresh` retried
+through the refresh would wait on its own promise forever.
 
 ## Error boundaries in Next.js 16.4
 
@@ -73,13 +91,19 @@ before changing error boundary signatures.
 
 `handleError` (`src/utils/handleError.ts`) reads `error.response.data`, not
 `error.message`. Axios's `message` is `"Request failed with status code 400"` —
-showing it to the user hides what the API actually said. Supported shapes:
-`{ message }`, `{ error: { message } }` (Strapi), and a plain string.
+showing it to the user hides what the API actually said. The API answers every
+error with RFC 9457 Problem Details, and `detail` is the pt-BR message meant for
+the user; a plain string body is also accepted.
 
-Global `MutationCache.onError` in `src/services/queryClient.ts` pipes mutations
-through `handleError` into `DefaultModal` automatically. Pass
+A `422` also carries `errors: [{ pointer: '#/email', detail }]`.
+`getFieldErrors(error)` turns it into `{ email: '…' }` so a form can call
+`setError` per field instead of showing one generic modal.
+
+`MutationCache.onError` in `src/services/queryClient.ts` pipes mutations through
+`handleError` into `DefaultModal` automatically. Pass
 `meta: { suppressErrorModal: true }` on a mutation only when the screen renders
-its own inline error recovery.
+its own inline error recovery, or when the failure is not the user's concern
+(`useLogout` — the cookies are cleared either way).
 
 ## Why TypeScript is pinned to `~6.0.3`
 

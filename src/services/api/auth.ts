@@ -1,55 +1,32 @@
-/* eslint-disable require-await */
-import { TLoginResponse, TUser } from '@/types/user';
+import { TAuthSession, TRegisterInput } from '@/types/auth';
 import { LoginForm } from '@/validation/login.validation';
 
-// import { api } from '../http';
+import { api } from '../http';
 
-// const BASE_URL = '/auth';
+const BASE_URL = 'auth';
 
 export const authService = {
-  login: async (form: LoginForm): Promise<TLoginResponse> => {
-    // const { data } = await api.post<TLoginResponse>(`${BASE_URL}/local`, form);
-    // return data;
-
-    return {
-      jwt: 'mocked-jwt-token',
-      refreshToken: 'mocked-refresh-token',
-      user: {
-        id: 1,
-        documentId: 'mocked-document-id',
-        email: form.email,
-      },
-    };
+  register: async (input: TRegisterInput) => {
+    const { data } = await api.post<TAuthSession>(
+      `${BASE_URL}/register`,
+      input,
+    );
+    return data;
   },
 
-  refreshAccessToken: async (
-    _refreshToken: string,
-  ): Promise<TLoginResponse> => {
-    // const { data } = await api.post<TLoginResponse>(
-    //   `${BASE_URL}/refresh-token`,
-    //   { refreshToken: _refreshToken },
-    // );
-    // return data;
-
-    return {
-      jwt: 'mocked-jwt-token',
-      refreshToken: 'mocked-refresh-token',
-      user: {
-        id: 1,
-        documentId: 'mocked-document-id',
-        email: 'mocked-email@example.com',
-      },
-    };
+  login: async ({ email, password }: LoginForm) => {
+    const { data } = await api.post<TAuthSession>(`${BASE_URL}/login`, {
+      email,
+      password,
+    });
+    return data;
   },
 
-  fetchUser: async (): Promise<TUser> => {
-    // const { data } = await api.get<TUser>(`${BASE_URL}/me`);
-    // return data;
+  logout: async (refreshToken: string) => {
+    await api.post(`${BASE_URL}/logout`, { refreshToken });
+  },
 
-    return {
-      id: 1,
-      documentId: 'mocked-document-id',
-      name: 'Mocked User',
-    };
+  logoutAll: async () => {
+    await api.post(`${BASE_URL}/logout-all`);
   },
 };

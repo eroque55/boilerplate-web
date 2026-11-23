@@ -1,13 +1,36 @@
 import { LOGIN_ROUTE } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { TTokenPair } from '@/types/auth';
 
 import { getCookie, removeCookie, setCookie } from './cookies';
 
+// Matches the API's default REFRESH_TOKEN_TTL_DAYS.
 const PERSISTENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
-type SessionTokens = {
-  jwt: string;
-  refreshToken?: string;
+type TSessionTokens = Pick<TTokenPair, 'accessToken' | 'refreshToken'>;
+
+const isPersistent = () => getCookie(STORAGE_KEYS.persistSession) === '1';
+
+const save = (
+  { accessToken, refreshToken }: TSessionTokens,
+  persist: boolean,
+) => {
+  const options = persist ? { maxAge: PERSISTENT_MAX_AGE_SECONDS } : {};
+
+  setCookie(STORAGE_KEYS.accessToken, accessToken, options);
+  setCookie(STORAGE_KEYS.refreshToken, refreshToken, options);
+
+  if (persist) {
+    setCookie(STORAGE_KEYS.persistSession, '1', options);
+  } else {
+    removeCookie(STORAGE_KEYS.persistSession);
+  }
+};
+
+const clear = () => {
+  removeCookie(STORAGE_KEYS.accessToken);
+  removeCookie(STORAGE_KEYS.refreshToken);
+  removeCookie(STORAGE_KEYS.persistSession);
 };
 
 export const session = {
@@ -21,24 +44,14 @@ export const session = {
       getCookie(STORAGE_KEYS.refreshToken),
     ),
 
-  start: ({ jwt, refreshToken }: SessionTokens, persist: boolean) => {
-    const options = persist ? { maxAge: PERSISTENT_MAX_AGE_SECONDS } : {};
+  start: (tokens: TSessionTokens, persist: boolean) => save(tokens, persist),
 
-    setCookie(STORAGE_KEYS.accessToken, jwt, options);
+  rotate: (tokens: TSessionTokens) => save(tokens, isPersistent()),
 
-    if (persist && refreshToken) {
-      setCookie(STORAGE_KEYS.refreshToken, refreshToken, options);
-    }
-  },
-
-  clear: () => {
-    removeCookie(STORAGE_KEYS.accessToken);
-    removeCookie(STORAGE_KEYS.refreshToken);
-  },
+  clear,
 
   end: () => {
-    removeCookie(STORAGE_KEYS.accessToken);
-    removeCookie(STORAGE_KEYS.refreshToken);
+    clear();
     window.location.replace(LOGIN_ROUTE);
   },
 };

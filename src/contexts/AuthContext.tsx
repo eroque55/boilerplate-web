@@ -14,7 +14,8 @@ import {
 
 import { queryKeys } from '@/constants/queryKeys';
 import { HOME_ROUTE } from '@/constants/routes';
-import { useLogin, useMe } from '@/hooks/api/useAuthApi';
+import { useLogin, useLogout } from '@/hooks/api/useAuthApi';
+import { useMe } from '@/hooks/api/useUsersApi';
 import { TUser } from '@/types/user';
 import { session } from '@/utils/session';
 import { LoginForm } from '@/validation/login.validation';
@@ -24,7 +25,7 @@ type ContextValues = {
   isLoading: boolean;
   isLoggingIn: boolean;
   login: (form: LoginForm) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
 };
 
@@ -33,7 +34,7 @@ const AuthContext = createContext<ContextValues>({
   isLoading: false,
   isLoggingIn: false,
   login: () => Promise.resolve(),
-  logout: () => {},
+  logout: () => Promise.resolve(),
   fetchUser: () => Promise.resolve(),
 });
 
@@ -65,22 +66,29 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
 
   const { data: user, isLoading, refetch } = useMe(hasSession);
   const { mutateAsync: loginService, isPending: isLoggingIn } = useLogin();
+  const { mutateAsync: logoutService } = useLogout();
 
   const fetchUser = useCallback(async () => {
     await refetch();
   }, [refetch]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const refreshToken = session.getRefreshToken();
+
+    if (refreshToken) {
+      await logoutService(refreshToken).catch(() => undefined);
+    }
+
     queryClient.clear();
     session.end();
-  }, [queryClient]);
+  }, [logoutService, queryClient]);
 
   const login = useCallback(
     async (form: LoginForm) => {
-      const data = await loginService(form);
-      session.start(data, form.requestRefresh);
+      const { user: loggedUser, ...tokens } = await loginService(form);
+      session.start(tokens, form.requestRefresh);
+      queryClient.setQueryData(queryKeys.user.me, loggedUser);
       setSessionFlag(prev => prev + 1);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.user.me });
       router.replace(getRedirectPath());
     },
     [loginService, queryClient, router],

@@ -11,19 +11,21 @@ export const makeQueryClient = () => {
         retry: false,
         refetchOnWindowFocus: false,
       },
-      mutations: {
-        onError: error => {
-          useDefaultModal.getState().openModal({
-            type: 'error',
-            title: 'Ops!',
-            message: handleError(error),
-            confirmText: 'Fechar',
-            closeOnClickOutside: true,
-          });
-        },
-      },
     },
     mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        if (mutation.meta?.suppressErrorModal) {
+          return;
+        }
+
+        useDefaultModal.getState().openModal({
+          type: 'error',
+          title: 'Ops!',
+          message: handleError(error),
+          confirmText: 'Fechar',
+          closeOnClickOutside: true,
+        });
+      },
       onSuccess: (_data, _variables, _context, mutation) => {
         if (mutation.meta?.invalidateQueries) {
           void queryClient.invalidateQueries({
