@@ -40,6 +40,7 @@ code in that area, not after something breaks.
 | Touch auth, cookies, session or the 401 token refresh    | `.claude/gotchas.md`           |
 | Touch dark mode or hydration-sensitive hooks             | `.claude/gotchas.md`           |
 | Add, remove or bump a dependency                         | `.claude/gotchas.md`           |
+| Write a commit message or open a PR                      | `CONTRIBUTING.md`              |
 
 ## Non-negotiables
 
