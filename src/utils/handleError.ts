@@ -1,34 +1,35 @@
 import { isAxiosError } from 'axios';
 
+import { TProblemDetails } from '@/types/api';
+
 const DEFAULT_MESSAGE = 'Houve um imprevisto, tente novamente mais tarde';
 
-const getApiMessage = (data: unknown): string | undefined => {
+const getProblemDetails = (
+  error: unknown,
+): Partial<TProblemDetails> | undefined => {
+  if (!isAxiosError(error)) {
+    return undefined;
+  }
+
+  const data: unknown = error.response?.data;
+
+  return data && typeof data === 'object' ? data : undefined;
+};
+
+const getApiMessage = (error: unknown) => {
+  if (!isAxiosError(error)) {
+    return undefined;
+  }
+
+  const data: unknown = error.response?.data;
+
   if (typeof data === 'string' && data) {
     return data;
   }
 
-  if (!data || typeof data !== 'object') {
-    return undefined;
-  }
+  const detail = getProblemDetails(error)?.detail;
 
-  const { message, error } = data as {
-    message?: unknown;
-    error?: { message?: unknown };
-  };
-
-  if (typeof error?.message === 'string' && error.message) {
-    return error.message;
-  }
-
-  if (Array.isArray(message) && typeof message[0] === 'string') {
-    return message[0];
-  }
-
-  if (typeof message === 'string' && message) {
-    return message;
-  }
-
-  return undefined;
+  return typeof detail === 'string' && detail ? detail : undefined;
 };
 
 export const handleError = (error: unknown): string => {
@@ -41,7 +42,7 @@ export const handleError = (error: unknown): string => {
   }
 
   if (isAxiosError(error)) {
-    return getApiMessage(error.response?.data) ?? DEFAULT_MESSAGE;
+    return getApiMessage(error) ?? DEFAULT_MESSAGE;
   }
 
   if (error instanceof Error && error.message) {
@@ -49,4 +50,19 @@ export const handleError = (error: unknown): string => {
   }
 
   return DEFAULT_MESSAGE;
+};
+
+export const getFieldErrors = (error: unknown): Record<string, string> => {
+  const errors = getProblemDetails(error)?.errors;
+
+  if (!Array.isArray(errors)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    errors.map(({ pointer, detail }) => [
+      pointer.replace(/^#\//, '').replaceAll('/', '.'),
+      detail,
+    ]),
+  );
 };

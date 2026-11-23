@@ -7,7 +7,7 @@ export const env = createEnv({
     LOCAL_IP: z.string().optional(),
   },
   client: {
-    NEXT_PUBLIC_API_URL: z.url().default('http://localhost:3333'),
+    NEXT_PUBLIC_API_URL: z.url().default('http://localhost:3333/v1'),
   },
   runtimeEnv: {
     LOCAL_IP: process.env.LOCAL_IP,

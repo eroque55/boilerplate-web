@@ -1,7 +1,12 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 
-import { queryKeys } from '@/constants/queryKeys';
 import { authService } from '@/services/api/auth';
+
+export const useRegister = () => {
+  return useMutation({
+    mutationFn: authService.register,
+  });
+};
 
 export const useLogin = () => {
   return useMutation({
@@ -9,16 +14,15 @@ export const useLogin = () => {
   });
 };
 
-export const useRefreshAccessToken = () => {
+export const useLogout = () => {
   return useMutation({
-    mutationFn: authService.refreshAccessToken,
+    mutationFn: authService.logout,
+    meta: { suppressErrorModal: true },
   });
 };
 
-export const useMe = (enabled = true) => {
-  return useQuery({
-    queryKey: queryKeys.user.me,
-    queryFn: authService.fetchUser,
-    enabled,
+export const useLogoutAll = () => {
+  return useMutation({
+    mutationFn: authService.logoutAll,
   });
 };

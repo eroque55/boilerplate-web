@@ -1,16 +1,21 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 import { env } from '@/env';
-import { TLoginResponse } from '@/types/user';
+import { TTokenPair } from '@/types/auth';
 import { session } from '@/utils/session';
 
 type RetriableRequest = InternalAxiosRequestConfig & { retry?: boolean };
 
-const REFRESH_URL = 'auth/refresh-token';
-const PUBLIC_URLS = ['auth/local', REFRESH_URL];
+const REFRESH_URL = 'auth/refresh';
+const PUBLIC_URLS = [
+  'auth/register',
+  'auth/login',
+  'auth/logout',
+  REFRESH_URL,
+] as const;
 
 const isPublicUrl = (url?: string) =>
-  PUBLIC_URLS.some(publicUrl => url?.includes(publicUrl));
+  PUBLIC_URLS.some(publicUrl => url?.endsWith(publicUrl));
 
 export const api = axios.create({
   baseURL: env.NEXT_PUBLIC_API_URL,
@@ -24,11 +29,11 @@ const requestNewAccessToken = async () => {
   }
 
   try {
-    const { data } = await api.post<TLoginResponse>(REFRESH_URL, {
+    const { data } = await api.post<TTokenPair>(REFRESH_URL, {
       refreshToken,
     });
-    session.start(data, true);
-    return data.jwt;
+    session.rotate(data);
+    return data.accessToken;
   } catch {
     return null;
   }

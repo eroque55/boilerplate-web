@@ -1,55 +1,95 @@
 import { AxiosError, AxiosHeaders } from 'axios';
 import { describe, expect, it } from 'vitest';
 
-import { handleError } from './handleError';
+import { getFieldErrors, handleError } from './handleError';
 
-const buildAxiosError = (data: unknown) =>
+const DEFAULT_MESSAGE = 'Houve um imprevisto, tente novamente mais tarde';
+
+const buildAxiosError = (data: unknown, status = 400) =>
   new AxiosError(
-    'Request failed with status code 400',
+    `Request failed with status code ${status}`,
     'ERR_BAD_REQUEST',
     undefined,
     undefined,
     {
       data,
-      status: 400,
+      status,
       statusText: 'Bad Request',
       headers: {},
       config: { headers: new AxiosHeaders() },
     },
   );
 
+const validationProblem = {
+  type: 'about:blank',
+  title: 'Unprocessable Entity',
+  status: 422,
+  detail: 'Dados inválidos',
+  instance: '/v1/auth/register',
+  errors: [
+    { pointer: '#/email', detail: 'E-mail inválido' },
+    { pointer: '#/address/zipCode', detail: 'CEP inválido' },
+  ],
+};
+
 describe('handleError', () => {
   it('returns plain strings directly', () => {
     expect(handleError('Sessão expirada')).toBe('Sessão expirada');
   });
 
-  it('extracts { message } from Axios responses', () => {
+  it('extracts detail from RFC 9457 Problem Details responses', () => {
     expect(
-      handleError(buildAxiosError({ message: 'Credenciais inválidas' })),
-    ).toBe('Credenciais inválidas');
+      handleError(
+        buildAxiosError(
+          {
+            type: 'about:blank',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'E-mail ou senha incorretos',
+            instance: '/v1/auth/login',
+          },
+          401,
+        ),
+      ),
+    ).toBe('E-mail ou senha incorretos');
   });
 
-  it('extracts Strapi { error: { message } } from Axios responses', () => {
-    expect(
-      handleError(buildAxiosError({ error: { message: 'Usuário bloqueado' } })),
-    ).toBe('Usuário bloqueado');
-  });
-
-  it('extracts first item from NestJS { message: string[] } validation responses', () => {
-    expect(
-      handleError(buildAxiosError({ message: ['E-mail já cadastrado'] })),
-    ).toBe('E-mail já cadastrado');
-  });
-
-  it('falls back to the default message when Axios response has no message', () => {
-    expect(handleError(buildAxiosError({}))).toBe(
-      'Houve um imprevisto, tente novamente mais tarde',
+  it('accepts response data as a plain string', () => {
+    expect(handleError(buildAxiosError('Falha no servidor'))).toBe(
+      'Falha no servidor',
     );
+  });
+
+  it('falls back to the default message when the response has no detail', () => {
+    expect(handleError(buildAxiosError({}))).toBe(DEFAULT_MESSAGE);
+    expect(handleError(buildAxiosError(null))).toBe(DEFAULT_MESSAGE);
+  });
+
+  it('never shows the generic Axios message', () => {
+    expect(
+      handleError(buildAxiosError({ title: 'Bad Request' })),
+    ).not.toContain('Request failed with status code');
   });
 
   it('returns Error.message for standard Error instances', () => {
     expect(handleError(new Error('Sem conexão com a internet!'))).toBe(
       'Sem conexão com a internet!',
     );
+  });
+});
+
+describe('getFieldErrors', () => {
+  it('maps JSON pointers to form field paths', () => {
+    expect(getFieldErrors(buildAxiosError(validationProblem, 422))).toEqual({
+      email: 'E-mail inválido',
+      'address.zipCode': 'CEP inválido',
+    });
+  });
+
+  it('returns an empty object when the error has no field errors', () => {
+    expect(
+      getFieldErrors(buildAxiosError({ detail: 'Não encontrado' })),
+    ).toEqual({});
+    expect(getFieldErrors(new Error('boom'))).toEqual({});
   });
 });

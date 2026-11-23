@@ -5,6 +5,10 @@ with deduplicated token refresh, optimistic route guards, dark mode without FOUC
 a complete UI kit, testing set up, and linting that enforces conventions instead
 of just documenting them.
 
+It is the web companion of [boilerplate-api](https://github.com/eroque55/boilerplate-api)
+(NestJS) and speaks its contract out of the box: JWT access tokens, rotating
+refresh tokens and RFC 9457 error responses.
+
 ## Stack
 
 |                                    |                                                                   |
@@ -20,35 +24,39 @@ of just documenting them.
 
 ## Get started
 
-1. Copy the environment template:
+1. Start [boilerplate-api](https://github.com/eroque55/boilerplate-api)
+   (`yarn db:up && yarn db:migrate && yarn db:seed && yarn dev`). It listens on
+   `http://localhost:3333` and its `.env.example` already allows this origin in
+   `CORS_ORIGINS`.
+
+2. Copy the environment template:
 
    ```bash
    cp .env.example .env.local
    ```
 
-2. Install dependencies:
+3. Install dependencies:
 
    ```bash
    yarn install
    ```
 
-3. Start the development server:
+4. Start the development server:
 
    ```bash
    yarn dev
    ```
 
-   Open [http://localhost:3000](http://localhost:3000). Mocked authentication is
-   enabled out of the box in `src/services/api/auth.ts` so you can sign in
-   immediately and swap in real API endpoints when ready.
+   Open [http://localhost:3000](http://localhost:3000) and sign in with the
+   API's `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
 
 ## First things to change
 
 1. Replace `changeme` in `package.json` (`name`) and `src/constants/app.ts`
    (`APP_NAME`, `APP_DESCRIPTION`). Cookie and `localStorage` keys derive from
    `APP_NAME` automatically via `src/constants/storageKeys.ts`.
-2. Uncomment the real HTTP calls in `src/services/api/auth.ts` and adjust
-   `src/types/user.ts` to match your backend payload.
+2. Point `NEXT_PUBLIC_API_URL` at your deployed API, including the `/v1`
+   prefix.
 
 ## Project structure
 
@@ -83,10 +91,12 @@ src/
 
 ## What's included
 
-**Authentication** — `AuthContext` + `session.ts` + `services/http.ts` handle
-login, logout, user fetching, and automatic token refresh. Concurrent `401`
-responses share a single in-flight refresh promise so rotating refresh tokens
-never get invalidated by parallel requests.
+**Authentication** — `AuthContext` + `session.ts` + `services/http.ts` talk to
+the API's `/auth/login`, `/auth/refresh`, `/auth/logout` and `/users/me`.
+"Manter-me conectado" decides whether the session cookies survive closing the
+browser. Concurrent `401` responses share a single in-flight refresh promise so
+rotating refresh tokens never get invalidated by parallel requests, and logout
+revokes the refresh token on the server before clearing the cookies.
 
 **Route guards & caching** — `src/proxy.ts` redirects unauthenticated visitors
 away from private routes (preserving `?redirect=…`) and authenticated users away
@@ -95,9 +105,9 @@ layouts statically prerendered while `<ClientOnly>` cleanly mounts
 session-dependent screens.
 
 **Error handling** — every failed mutation passes through `handleError`, which
-extracts the real message returned by the API (`{ message }`, Strapi's
-`{ error: { message } }`, or plain text) and surfaces it in the global
-`DefaultModal`.
+reads the pt-BR `detail` of the API's RFC 9457 Problem Details and surfaces it
+in the global `DefaultModal`. `getFieldErrors` maps a `422`'s
+`errors[].pointer` to form field names for `setError`.
 
 **Theme & Dark Mode** — `src/theme/colors.ts` is the single color source of
 truth, shared between TypeScript and Tailwind CSS 4 via `@config`. A tiny inline
